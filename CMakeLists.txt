@@ -76,6 +76,9 @@ target_link_libraries(timecube PRIVATE graphengine)
 #end timecube
 
 find_library(dovi dovi)
+if(NOT dovi)
+    message(FATAL_ERROR "libdovi not found. Set CMAKE_PREFIX_PATH to the libdovi install directory.")
+endif()
 
 # DoViBakerVS plugin
 add_library(DoViBakerVS SHARED
@@ -105,12 +108,14 @@ target_link_libraries(DoViBakerVS PRIVATE
 )
 
 if(WIN32)
+    # Windows system libraries required for static Rust linking
     target_link_libraries(DoViBakerVS PRIVATE
         ws2_32
         bcrypt
         userenv
         shlwapi
         ntdll
+        synchronization
     )
 endif()
 

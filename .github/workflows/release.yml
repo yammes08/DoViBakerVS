@@ -26,11 +26,11 @@ jobs:
       - name: Install cargo-c
         run: cargo install cargo-c
 
-      - name: Build libdovi
+      - name: Build libdovi (static)
         shell: pwsh
         run: |
           cd dovi_tool/dolby_vision
-          cargo cinstall --release --prefix="${{ github.workspace }}/libdovi"
+          cargo cinstall --release --library-type=staticlib --prefix="${{ github.workspace }}/libdovi"
 
       - name: Debug libdovi install
         shell: pwsh
