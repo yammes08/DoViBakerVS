@@ -30,7 +30,7 @@ jobs:
         shell: pwsh
         run: |
           cd dovi_tool/dolby_vision
-          cargo cinstall --release --prefix="${{ github.workspace }}/libdovi" --destdir="${{ github.workspace }}/libdovi"
+          cargo cinstall --release --destdir="${{ github.workspace }}/libdovi"
 
       - name: Get VapourSynth SDK headers
         shell: pwsh
