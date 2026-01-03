@@ -1,0 +1,112 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+env:
+  VS_SDK_VERSION: R73
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-c
+        run: cargo install cargo-c
+
+      - name: Build libdovi
+        shell: pwsh
+        run: |
+          cd dovi_tool/dolby_vision
+          cargo cinstall --release --prefix="${{ github.workspace }}/libdovi" --destdir="${{ github.workspace }}/libdovi"
+
+      - name: Get VapourSynth SDK headers
+        shell: pwsh
+        run: |
+          # Clone just the include directory from VapourSynth source
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/vapoursynth/vapoursynth.git vs-source
+          cd vs-source
+          git sparse-checkout set include
+          cd ..
+          Move-Item vs-source/include vs-sdk-headers
+
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $version = Get-Content VERSION -Raw
+          $version = $version.Trim()
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Extract release notes
+        shell: pwsh
+        run: |
+          $changelog = Get-Content CHANGELOG.md -Raw
+          $version = "${{ steps.version.outputs.version }}"
+
+          # Extract section for this version (from ## X.X.X to next ## or end)
+          $pattern = "(?s)## $([regex]::Escape($version)).*?(?=\n## |\z)"
+          if ($changelog -match $pattern) {
+              $notes = $matches[0].Trim()
+          } else {
+              $notes = "Release $version"
+          }
+
+          Set-Content -Path release_notes.md -Value $notes
+
+      - name: Verify tag matches version
+        shell: bash
+        run: |
+          TAG_VERSION="${{ github.ref_name }}"
+          CODE_VERSION="v${{ steps.version.outputs.version }}"
+          if [ "$TAG_VERSION" != "$CODE_VERSION" ]; then
+            echo "::error::Tag ($TAG_VERSION) does not match VERSION file ($CODE_VERSION)"
+            exit 1
+          fi
+
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -B build -G "Visual Studio 18 2026" -A x64 `
+            -DVAPOURSYNTH_SDK="${{ github.workspace }}/vs-sdk-headers" `
+            -DCMAKE_PREFIX_PATH="${{ github.workspace }}/libdovi/usr/local"
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Prepare release artifacts
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $releaseName = "DoViBakerVS-v$version"
+
+          New-Item -ItemType Directory -Path "dist/$releaseName" -Force
+          Copy-Item "build/Release/DoViBakerVS.dll" "dist/$releaseName/"
+          Copy-Item "README.md" "dist/$releaseName/"
+          Copy-Item "LICENSE" "dist/$releaseName/"
+          Copy-Item "CHANGELOG.md" "dist/$releaseName/"
+
+          Compress-Archive -Path "dist/$releaseName/*" -DestinationPath "dist/$releaseName.zip"
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            --title "DoViBakerVS v${{ steps.version.outputs.version }}" `
+            --notes-file release_notes.md `
+            --prerelease `
+            "dist/DoViBakerVS-v${{ steps.version.outputs.version }}.zip"

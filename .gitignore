@@ -1,0 +1,53 @@
+# Build directories
+build/
+build_*/
+out/
+cmake-build-*/
+
+# IDE files
+.vs/
+.vscode/
+*.vcxproj.user
+*.suo
+*.user
+*.sln.docstates
+
+# Compiled files
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+*.dylib
+*.exe
+*.pdb
+*.ilk
+*.exp
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!cmake_uninstall.cmake.in
+
+# CMake-generated Visual Studio files (run cmake -B build instead)
+*.sln
+*.vcxproj
+*.vcxproj.filters
+ALL_BUILD.vcxproj*
+ZERO_CHECK.vcxproj*
+x64/
+Release/
+Debug/
+*.dir/
+
+# Package files
+*.zip
+*.tar.gz
+*.7z
+
+# Claude Code local config
+.claude/
